@@ -6,42 +6,39 @@
     <title>Deeplink • Ультра-чат</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Базовые сбросы */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', 'SF Pro Display', -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
 
         :root {
             --bg-primary: #0a0a0f;
             --bg-secondary: #11111a;
             --bg-tertiary: #1a1a24;
-            --bg-glass: rgba(30, 30, 40, 0.7);
-            --bg-input: rgba(40, 40, 50, 0.8);
+            --bg-glass: rgba(30, 30, 40, 0.8);
+            --bg-input: rgba(40, 40, 50, 0.9);
             
             --text-primary: #ffffff;
             --text-secondary: #b0b0d0;
             --text-muted: #8080a0;
             
-            --accent-neon: #00f7ff;
+            --accent-blue: #00f7ff;
             --accent-purple: #b026ff;
             --accent-pink: #ff2a6d;
             --accent-green: #00ff9d;
             
-            --border-color: rgba(100, 100, 200, 0.2);
+            --border-color: rgba(100, 100, 200, 0.3);
             --shadow-neon: 0 0 15px rgba(0, 247, 255, 0.3);
-            --shadow-heavy: 0 10px 40px rgba(0, 0, 0, 0.5);
+            --shadow-heavy: 0 20px 50px rgba(0, 0, 0, 0.5);
             
-            --gradient-primary: linear-gradient(135deg, var(--accent-neon), var(--accent-purple));
+            --gradient-primary: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
             --gradient-secondary: linear-gradient(135deg, var(--accent-pink), var(--accent-green));
             
-            --border-radius: 16px;
-            --border-radius-lg: 24px;
-            --border-radius-sm: 12px;
-            
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --border-radius: 12px;
+            --border-radius-lg: 20px;
+            --transition: all 0.3s ease;
         }
 
         body {
@@ -49,12 +46,8 @@
             color: var(--text-primary);
             height: 100vh;
             overflow: hidden;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(100, 100, 255, 0.05) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(255, 100, 255, 0.05) 0%, transparent 20%);
         }
 
-        /* Экраны */
         .screen {
             position: fixed;
             top: 0;
@@ -72,28 +65,6 @@
             opacity: 1;
         }
 
-        /* Анимации */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        @keyframes neonPulse {
-            0%, 100% { box-shadow: var(--shadow-neon); }
-            50% { box-shadow: 0 0 25px rgba(0, 247, 255, 0.6); }
-        }
-
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        /* Экран приветствия */
         .welcome-screen {
             align-items: center;
             justify-content: center;
@@ -104,29 +75,27 @@
             max-width: 500px;
             width: 100%;
             text-align: center;
-            animation: fadeIn 1s ease;
         }
 
         .logo {
-            font-size: 4.5rem;
+            font-size: 4rem;
             margin-bottom: 10px;
             background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            animation: float 3s ease-in-out infinite;
         }
 
         .app-name {
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 900;
-            margin-bottom: 5px;
-            letter-spacing: 2px;
-            text-shadow: 0 0 20px var(--accent-neon);
+            margin-bottom: 10px;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px var(--accent-blue);
         }
 
         .tagline {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: var(--text-secondary);
             margin-bottom: 40px;
             font-weight: 300;
@@ -138,11 +107,38 @@
             margin: 30px 0;
         }
 
-        /* Экран входа/регистрации */
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            flex: 1;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-neon);
+        }
+
+        .btn-secondary {
+            background: var(--bg-glass);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
         .auth-screen {
             align-items: center;
             justify-content: center;
-            background: var(--bg-primary);
         }
 
         .auth-card {
@@ -154,7 +150,6 @@
             width: 100%;
             max-width: 400px;
             box-shadow: var(--shadow-heavy);
-            animation: slideInRight 0.6s ease;
         }
 
         .auth-header {
@@ -176,21 +171,54 @@
 
         .back-btn:hover {
             background: var(--bg-input);
-            color: var(--accent-neon);
+            color: var(--accent-blue);
         }
 
         .auth-title {
             flex: 1;
             text-align: center;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 700;
             background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
-        /* Основной интерфейс */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-neon);
+        }
+
+        .error-message {
+            color: var(--accent-pink);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            min-height: 20px;
+        }
+
         .app-container {
             display: flex;
             height: 100%;
@@ -200,9 +228,8 @@
             width: 100%;
         }
 
-        /* Боковая панель */
         .sidebar {
-            width: 380px;
+            width: 350px;
             display: flex;
             flex-direction: column;
             background: var(--bg-glass);
@@ -210,7 +237,6 @@
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius-lg);
             overflow: hidden;
-            box-shadow: var(--shadow-heavy);
         }
 
         .user-header {
@@ -226,45 +252,31 @@
         }
 
         .user-avatar {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: var(--gradient-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
             font-weight: bold;
             color: white;
-            border: 2px solid var(--accent-neon);
-            box-shadow: var(--shadow-neon);
+            font-size: 1.2rem;
         }
 
         .user-details h3 {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             margin-bottom: 5px;
         }
 
         .user-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--accent-green);
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent-green);
-            animation: neonPulse 2s infinite;
-        }
-
-        /* Поиск */
         .search-container {
             padding: 20px;
-            position: relative;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .search-box {
@@ -277,61 +289,47 @@
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted);
-            z-index: 1;
         }
 
         .search-input {
             width: 100%;
-            padding: 15px 15px 15px 45px;
+            padding: 12px 15px 12px 45px;
             background: var(--bg-input);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
             color: var(--text-primary);
-            font-size: 0.95rem;
-            transition: var(--transition);
+            font-size: 0.9rem;
         }
 
-        .search-input:focus {
-            outline: none;
-            border-color: var(--accent-neon);
-            box-shadow: var(--shadow-neon);
-        }
-
-        /* Список чатов */
         .chats-list {
             flex: 1;
             overflow-y: auto;
-            padding: 0 20px 20px;
+            padding: 20px;
         }
 
         .chat-item {
-            padding: 18px;
+            padding: 15px;
             border-radius: var(--border-radius);
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             cursor: pointer;
             transition: var(--transition);
-            background: transparent;
-            border: 1px solid transparent;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .chat-item:hover {
             background: var(--bg-input);
-            border-color: var(--border-color);
-            transform: translateX(5px);
         }
 
         .chat-item.active {
-            background: linear-gradient(135deg, rgba(0, 247, 255, 0.1), rgba(176, 38, 255, 0.1));
-            border-color: var(--accent-neon);
-            animation: neonPulse 3s infinite;
+            background: var(--bg-input);
+            border-left: 3px solid var(--accent-blue);
         }
 
         .chat-avatar {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             background: var(--gradient-secondary);
             display: flex;
@@ -339,10 +337,9 @@
             justify-content: center;
             font-weight: bold;
             color: white;
-            font-size: 1.1rem;
         }
 
-        .chat-content {
+        .chat-info {
             flex: 1;
             min-width: 0;
         }
@@ -350,42 +347,38 @@
         .chat-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
             margin-bottom: 5px;
         }
 
         .chat-name {
             font-weight: 600;
-            font-size: 1rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .chat-time {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
         }
 
         .chat-preview {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .unread-badge {
-            background: var(--accent-pink);
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            min-width: 18px;
-            text-align: center;
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            display: inline-block;
+            margin-right: 5px;
         }
 
-        /* Основная область чата */
         .chat-area {
             flex: 1;
             display: flex;
@@ -395,11 +388,10 @@
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius-lg);
             overflow: hidden;
-            box-shadow: var(--shadow-heavy);
         }
 
         .chat-header-bar {
-            padding: 25px;
+            padding: 20px;
             border-bottom: 1px solid var(--border-color);
             background: var(--bg-secondary);
             display: flex;
@@ -407,120 +399,78 @@
             justify-content: space-between;
         }
 
-        .chat-contact {
+        .contact-info {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .contact-name {
-            font-size: 1.4rem;
-            font-weight: 700;
+            font-size: 1.2rem;
+            font-weight: 600;
         }
 
         .contact-status {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
         }
 
-        .online-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent-green);
-            display: inline-block;
-            margin-right: 6px;
-            animation: neonPulse 2s infinite;
-        }
-
-        .chat-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        /* Окно сообщений */
         .messages-container {
             flex: 1;
-            padding: 30px;
+            padding: 20px;
             overflow-y: auto;
-            background: var(--bg-primary);
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
 
         .message {
             max-width: 70%;
-            padding: 18px;
+            padding: 12px 15px;
             border-radius: var(--border-radius-lg);
             position: relative;
-            animation: fadeIn 0.3s ease;
-            word-wrap: break-word;
+            word-break: break-word;
         }
 
         .message.sent {
             align-self: flex-end;
             background: var(--gradient-primary);
             color: white;
-            border-bottom-right-radius: var(--border-radius-sm);
+            border-bottom-right-radius: 5px;
         }
 
         .message.received {
             align-self: flex-start;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
-            border-bottom-left-radius: var(--border-radius-sm);
-        }
-
-        .message-content {
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-
-        .message-image {
-            max-width: 300px;
-            max-height: 300px;
-            border-radius: var(--border-radius);
-            margin-top: 10px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .message-image:hover {
-            transform: scale(1.02);
+            border-bottom-left-radius: 5px;
         }
 
         .message-time {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             opacity: 0.8;
-            margin-top: 8px;
+            margin-top: 5px;
             text-align: right;
         }
 
-        .message-date {
-            text-align: center;
-            color: var(--text-muted);
-            padding: 15px 0;
-            font-size: 0.9rem;
+        .message-image {
+            max-width: 250px;
+            max-height: 250px;
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+            cursor: pointer;
         }
 
-        /* Панель ввода */
         .input-container {
-            padding: 25px;
+            padding: 20px;
             border-top: 1px solid var(--border-color);
             background: var(--bg-secondary);
         }
 
         .input-wrapper {
             display: flex;
-            gap: 15px;
-            align-items: flex-end;
-        }
-
-        .input-tools {
-            display: flex;
             gap: 10px;
-            margin-bottom: 15px;
+            align-items: flex-end;
         }
 
         .message-input {
@@ -528,25 +478,23 @@
             background: var(--bg-input);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
-            padding: 18px 20px;
+            padding: 15px;
             color: var(--text-primary);
             font-size: 1rem;
             resize: none;
-            min-height: 60px;
+            min-height: 50px;
             max-height: 120px;
             line-height: 1.5;
-            transition: var(--transition);
         }
 
         .message-input:focus {
             outline: none;
-            border-color: var(--accent-neon);
-            box-shadow: var(--shadow-neon);
+            border-color: var(--accent-blue);
         }
 
         .send-button {
-            width: 56px;
-            height: 56px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: var(--gradient-primary);
             border: none;
@@ -555,186 +503,65 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             transition: var(--transition);
-            box-shadow: var(--shadow-neon);
         }
 
         .send-button:hover {
-            transform: scale(1.1) rotate(15deg);
-            box-shadow: 0 0 25px rgba(0, 247, 255, 0.6);
+            transform: scale(1.1);
         }
 
-        .send-button:active {
-            transform: scale(0.95);
-        }
-
-        .attach-button {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 12px;
-            border-radius: 50%;
-            transition: var(--transition);
-        }
-
-        .attach-button:hover {
-            background: var(--bg-input);
-            color: var(--accent-neon);
-        }
-
-        /* Индикатор набора */
         .typing-indicator {
-            display: flex;
-            gap: 5px;
-            padding: 15px;
+            display: none;
+            padding: 10px;
             background: var(--bg-tertiary);
             border-radius: var(--border-radius);
             width: fit-content;
-            margin-left: 15px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .typing-indicator.active {
-            opacity: 1;
+            margin-left: 10px;
         }
 
         .typing-indicator span {
-            width: 8px;
-            height: 8px;
-            background: var(--accent-neon);
+            width: 6px;
+            height: 6px;
+            background: var(--accent-blue);
             border-radius: 50%;
-            animation: typing 1.4s infinite ease-in-out;
+            display: inline-block;
+            margin: 0 2px;
+            animation: typing 1s infinite;
         }
 
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
         @keyframes typing {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-            40% { transform: scale(1); opacity: 1; }
+            0%, 100% { transform: translateY(0); opacity: 0.3; }
+            50% { transform: translateY(-5px); opacity: 1; }
         }
 
-        /* Кнопки */
-        .btn {
-            padding: 16px 32px;
-            border: none;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex: 1;
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            box-shadow: var(--shadow-neon);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(0, 247, 255, 0.4);
-        }
-
-        .btn-secondary {
-            background: var(--bg-glass);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-input);
-            border-color: var(--accent-neon);
-        }
-
-        /* Формы */
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 10px;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 18px 20px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            color: var(--text-primary);
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent-neon);
-            box-shadow: var(--shadow-neon);
-        }
-
-        .error-message {
-            color: var(--accent-pink);
-            font-size: 0.9rem;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: var(--transition);
-        }
-
-        .error-message.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Уведомления */
         .notification {
             position: fixed;
-            top: 30px;
-            right: 30px;
-            padding: 20px 25px;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
             background: var(--bg-glass);
             backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
-            box-shadow: var(--shadow-heavy);
+            border-left: 4px solid var(--accent-green);
             z-index: 1000;
             transform: translateX(150%);
-            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            max-width: 350px;
+            transition: transform 0.3s ease;
         }
 
         .notification.show {
             transform: translateX(0);
         }
 
-        .notification.success {
-            border-left: 4px solid var(--accent-green);
-        }
-
         .notification.error {
-            border-left: 4px solid var(--accent-pink);
+            border-left-color: var(--accent-pink);
         }
 
-        /* Адаптивность */
-        @media (max-width: 1024px) {
+        @media (max-width: 768px) {
             .app-container {
                 flex-direction: column;
             }
@@ -744,47 +571,26 @@
                 height: 300px;
             }
             
-            .chat-area {
-                flex: 1;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .auth-card {
-                padding: 30px 20px;
-                margin: 20px;
-            }
-            
-            .app-container {
-                padding: 10px;
+            .auth-buttons {
+                flex-direction: column;
             }
             
             .message {
                 max-width: 85%;
             }
-            
-            .auth-buttons {
-                flex-direction: column;
-            }
         }
 
-        /* Прокрутка */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         ::-webkit-scrollbar-track {
             background: var(--bg-tertiary);
-            border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb {
             background: var(--gradient-primary);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-neon);
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -796,7 +602,7 @@
                 <i class="fas fa-bolt"></i>
             </div>
             <h1 class="app-name">DEEPLINK</h1>
-            <p class="tagline">Ультра-быстрый • Неоновый стиль • Без границ</p>
+            <p class="tagline">Ультра-быстрый чат с неоновым дизайном</p>
             
             <div class="auth-buttons">
                 <button onclick="showScreen('login-screen')" class="btn btn-primary">
@@ -822,27 +628,21 @@
             <div class="form-group">
                 <label class="form-label">Имя пользователя</label>
                 <input type="text" id="login-username" class="form-input" placeholder="Введите имя">
-                <div id="login-user-error" class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
-                </div>
+                <div id="login-user-error" class="error-message"></div>
             </div>
             
             <div class="form-group">
                 <label class="form-label">Пароль</label>
                 <input type="password" id="login-password" class="form-input" placeholder="Введите пароль">
-                <div id="login-pass-error" class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
-                </div>
+                <div id="login-pass-error" class="error-message"></div>
             </div>
             
             <button onclick="login()" class="btn btn-primary">
-                <i class="fas fa-sign-in-alt"></i> Войти в аккаунт
+                <i class="fas fa-sign-in-alt"></i> Войти
             </button>
             
-            <p style="text-align: center; margin-top: 20px; color: var(--text-muted);">
-                Нет аккаунта? <a href="#" onclick="showScreen('register-screen')" style="color: var(--accent-neon); text-decoration: none;">Зарегистрируйтесь</a>
+            <p style="text-align: center; margin-top: 20px; color: var(--text-muted); font-size: 0.9rem;">
+                Нет аккаунта? <a href="#" onclick="showScreen('register-screen')" style="color: var(--accent-blue);">Зарегистрируйтесь</a>
             </p>
         </div>
     </div>
@@ -860,36 +660,27 @@
             <div class="form-group">
                 <label class="form-label">Имя пользователя (4-10 символов)</label>
                 <input type="text" id="register-username" class="form-input" placeholder="Только буквы, цифры и _">
-                <div id="register-user-error" class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
-                </div>
+                <div id="register-user-error" class="error-message"></div>
             </div>
             
             <div class="form-group">
                 <label class="form-label">Пароль</label>
                 <input type="password" id="register-password" class="form-input" placeholder="Минимум 6 символов">
-                <div id="register-pass-error" class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
-                </div>
+                <div id="register-pass-error" class="error-message"></div>
             </div>
             
             <div class="form-group">
                 <label class="form-label">Подтвердите пароль</label>
                 <input type="password" id="register-confirm" class="form-input" placeholder="Повторите пароль">
-                <div id="register-confirm-error" class="error-message">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span></span>
-                </div>
+                <div id="register-confirm-error" class="error-message"></div>
             </div>
             
             <button onclick="register()" class="btn btn-primary">
-                <i class="fas fa-user-plus"></i> Создать аккаунт
+                <i class="fas fa-user-plus"></i> Зарегистрироваться
             </button>
             
-            <p style="text-align: center; margin-top: 20px; color: var(--text-muted);">
-                Есть аккаунт? <a href="#" onclick="showScreen('login-screen')" style="color: var(--accent-neon); text-decoration: none;">Войдите</a>
+            <p style="text-align: center; margin-top: 20px; color: var(--text-muted); font-size: 0.9rem;">
+                Есть аккаунт? <a href="#" onclick="showScreen('login-screen')" style="color: var(--accent-blue);">Войдите</a>
             </p>
         </div>
     </div>
@@ -897,7 +688,6 @@
     <!-- Основной интерфейс -->
     <div id="main-screen" class="screen">
         <div class="app-container">
-            <!-- Боковая панель -->
             <div class="sidebar">
                 <div class="user-header">
                     <div class="user-info">
@@ -907,7 +697,6 @@
                         <div class="user-details">
                             <h3 id="user-name">Пользователь</h3>
                             <div class="user-status">
-                                <div class="status-dot"></div>
                                 <span id="user-status-text">online</span>
                             </div>
                         </div>
@@ -926,30 +715,21 @@
                 </div>
             </div>
             
-            <!-- Основная область чата -->
             <div class="chat-area">
                 <div class="chat-header-bar">
-                    <div class="chat-contact" id="chat-contact">
-                        <div class="contact-avatar" id="contact-avatar">
-                            <div class="chat-avatar" id="contact-avatar-initials">D</div>
-                        </div>
+                    <div class="contact-info" id="chat-contact">
+                        <div class="chat-avatar" id="contact-avatar">D</div>
                         <div>
                             <h3 class="contact-name" id="contact-name">Выберите чат</h3>
                             <p class="contact-status" id="contact-status">Начните общение</p>
                         </div>
-                    </div>
-                    <div class="chat-actions">
-                        <button class="attach-button" onclick="attachFile()" title="Прикрепить файл">
-                            <i class="fas fa-image"></i>
-                        </button>
-                        <input type="file" id="file-input" accept="image/*" style="display: none;">
                     </div>
                 </div>
                 
                 <div class="messages-container" id="messages-container">
                     <div style="text-align: center; padding: 40px; color: var(--text-muted);">
                         <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 20px;"></i>
-                        <h3>Добро пожаловать в Deeplink!</h3>
+                        <h3>Добро пожаловать в Deeplink</h3>
                         <p>Выберите пользователя для начала общения</p>
                     </div>
                 </div>
@@ -983,7 +763,6 @@
         let currentChat = null;
         let usersList = [];
         let typingTimeout = null;
-        let isTyping = false;
 
         // Показать экран
         function showScreen(screenId) {
@@ -994,12 +773,12 @@
         }
 
         // Показать уведомление
-        function showNotification(message, type = 'info') {
+        function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
                     <span>${message}</span>
                 </div>
             `;
@@ -1010,89 +789,20 @@
             
             setTimeout(() => {
                 notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 500);
+                setTimeout(() => notification.remove(), 300);
             }, 3000);
         }
 
-        // Форматирование времени
-        function formatTime(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        // Показать ошибку
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.color = '#ff2a6d';
         }
 
-        // Генерация цвета для аватара
-        function getAvatarColor(name) {
-            const colors = [
-                'linear-gradient(135deg, #00f7ff, #b026ff)',
-                'linear-gradient(135deg, #ff2a6d, #00ff9d)',
-                'linear-gradient(135deg, #ff6b6b, #4ecdc4)',
-                'linear-gradient(135deg, #ffd166, #06d6a0)',
-                'linear-gradient(135deg, #118ab2, #073b4c)'
-            ];
-            const index = name.charCodeAt(0) % colors.length;
-            return colors[index];
-        }
-
-        // Регистрация
-        async function register() {
-            const username = document.getElementById('register-username').value.trim();
-            const password = document.getElementById('register-password').value;
-            const confirm = document.getElementById('register-confirm').value;
-            
-            // Сброс ошибок
-            document.getElementById('register-user-error').classList.remove('show');
-            document.getElementById('register-pass-error').classList.remove('show');
-            document.getElementById('register-confirm-error').classList.remove('show');
-            
-            // Валидация
-            let hasError = false;
-            
-            if (username.length < 4 || username.length > 10) {
-                document.getElementById('register-user-error').querySelector('span').textContent = 'Имя: 4-10 символов';
-                document.getElementById('register-user-error').classList.add('show');
-                hasError = true;
-            }
-            
-            if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-                document.getElementById('register-user-error').querySelector('span').textContent = 'Только буквы, цифры и _';
-                document.getElementById('register-user-error').classList.add('show');
-                hasError = true;
-            }
-            
-            if (password.length < 6) {
-                document.getElementById('register-pass-error').querySelector('span').textContent = 'Пароль: минимум 6 символов';
-                document.getElementById('register-pass-error').classList.add('show');
-                hasError = true;
-            }
-            
-            if (password !== confirm) {
-                document.getElementById('register-confirm-error').querySelector('span').textContent = 'Пароли не совпадают';
-                document.getElementById('register-confirm-error').classList.add('show');
-                hasError = true;
-            }
-            
-            if (hasError) return;
-            
-            try {
-                const response = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    currentUser = data.user;
-                    showMainInterface();
-                    showNotification('Регистрация успешна!', 'success');
-                } else {
-                    document.getElementById('register-user-error').querySelector('span').textContent = data.error;
-                    document.getElementById('register-user-error').classList.add('show');
-                }
-            } catch (error) {
-                showNotification('Ошибка подключения', 'error');
-            }
+        // Очистить ошибку
+        function clearError(elementId) {
+            document.getElementById(elementId).textContent = '';
         }
 
         // Вход
@@ -1100,13 +810,16 @@
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
             
-            // Сброс ошибок
-            document.getElementById('login-user-error').classList.remove('show');
-            document.getElementById('login-pass-error').classList.remove('show');
+            clearError('login-user-error');
+            clearError('login-pass-error');
             
-            if (!username || !password) {
-                document.getElementById('login-user-error').querySelector('span').textContent = 'Заполните все поля';
-                document.getElementById('login-user-error').classList.add('show');
+            if (!username) {
+                showError('login-user-error', 'Введите имя пользователя');
+                return;
+            }
+            
+            if (!password) {
+                showError('login-pass-error', 'Введите пароль');
                 return;
             }
             
@@ -1122,13 +835,65 @@
                 if (data.success) {
                     currentUser = data.user;
                     showMainInterface();
-                    showNotification(`Добро пожаловать, ${username}!`, 'success');
+                    showNotification(`Добро пожаловать, ${username}!`);
                 } else {
-                    document.getElementById('login-user-error').querySelector('span').textContent = data.error;
-                    document.getElementById('login-user-error').classList.add('show');
+                    showError('login-user-error', data.error);
                 }
             } catch (error) {
-                showNotification('Ошибка подключения', 'error');
+                showNotification('Ошибка подключения к серверу', 'error');
+            }
+        }
+
+        // Регистрация
+        async function register() {
+            const username = document.getElementById('register-username').value.trim();
+            const password = document.getElementById('register-password').value;
+            const confirm = document.getElementById('register-confirm').value;
+            
+            // Очистка ошибок
+            clearError('register-user-error');
+            clearError('register-pass-error');
+            clearError('register-confirm-error');
+            
+            // Валидация
+            if (username.length < 4 || username.length > 10) {
+                showError('register-user-error', 'Имя: 4-10 символов');
+                return;
+            }
+            
+            if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                showError('register-user-error', 'Только латинские буквы, цифры и _');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('register-pass-error', 'Пароль: минимум 6 символов');
+                return;
+            }
+            
+            if (password !== confirm) {
+                showError('register-confirm-error', 'Пароли не совпадают');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    showMainInterface();
+                    showNotification('Регистрация успешна!');
+                } else {
+                    showError('register-user-error', data.error);
+                }
+            } catch (error) {
+                showNotification('Ошибка подключения к серверу', 'error');
             }
         }
 
@@ -1139,23 +904,21 @@
             // Обновляем информацию пользователя
             document.getElementById('user-name').textContent = currentUser.username;
             document.getElementById('avatar-text').textContent = currentUser.username.charAt(0).toUpperCase();
-            document.getElementById('user-avatar').style.background = getAvatarColor(currentUser.username);
             
-            // Подключаемся к WebSocket
-            connectSocket();
+            // Подключаем WebSocket
+            connectWebSocket();
             
             // Загружаем пользователей
             loadUsers();
-            
-            // Загружаем чаты
-            loadChats();
         }
 
-        // Подключение к WebSocket
-        function connectSocket() {
+        // Подключение WebSocket
+        function connectWebSocket() {
+            // Socket.IO автоматически подключается к текущему хосту
             socket = io();
             
             socket.on('connect', () => {
+                console.log('WebSocket подключен');
                 socket.emit('user_online', { user_id: currentUser.id });
             });
             
@@ -1169,7 +932,6 @@
                     scrollToBottom();
                 } else {
                     showNotification(`Новое сообщение от ${message.sender_name}`);
-                    loadChats();
                 }
             });
             
@@ -1183,10 +945,13 @@
         // Загрузка пользователей
         async function loadUsers() {
             try {
-                const response = await fetch('/api/users');
+                const response = await fetch(`/api/users?current_id=${currentUser.id}`);
                 const data = await response.json();
-                usersList = data.users;
-                updateUsersList();
+                
+                if (data.success) {
+                    usersList = data.users;
+                    updateUsersList();
+                }
             } catch (error) {
                 console.error('Ошибка загрузки пользователей:', error);
             }
@@ -1198,27 +963,19 @@
             chatsList.innerHTML = '';
             
             usersList.forEach(user => {
-                if (user.id === currentUser.id) return;
-                
                 const chatItem = document.createElement('div');
                 chatItem.className = 'chat-item';
                 chatItem.dataset.userId = user.id;
                 
-                const avatarStyle = user.avatar !== 'default.png' ? 
-                    `background-image: url('${user.avatar}'); background-size: cover;` :
-                    `background: ${getAvatarColor(user.username)};`;
-                
                 chatItem.innerHTML = `
-                    <div class="chat-avatar" style="${avatarStyle}">
-                        ${user.avatar === 'default.png' ? user.username.charAt(0).toUpperCase() : ''}
-                    </div>
-                    <div class="chat-content">
+                    <div class="chat-avatar">${user.username.charAt(0).toUpperCase()}</div>
+                    <div class="chat-info">
                         <div class="chat-header">
                             <div class="chat-name">${user.username}</div>
-                            <div class="chat-time">${user.online ? '<span style="color: #00ff9d;">●</span>' : ''}</div>
+                            <div class="chat-time">${user.last_seen || ''}</div>
                         </div>
                         <div class="chat-preview">
-                            ${user.online ? 'online' : 'offline'}
+                            ${user.online ? '<span class="online-dot"></span> online' : 'offline'}
                         </div>
                     </div>
                 `;
@@ -1228,83 +985,59 @@
             });
         }
 
-        // Загрузка чатов
-        async function loadChats() {
-            // В этой версии показываем всех пользователей как чаты
-            // В реальном приложении здесь была бы загрузка реальных чатов
-        }
-
         // Открыть чат
         async function openChat(user) {
             currentChat = user;
             
-            // Обновляем заголовок чата
+            // Обновляем заголовок
             document.getElementById('contact-name').textContent = user.username;
             document.getElementById('contact-status').innerHTML = user.online ? 
                 '<span class="online-dot"></span> online' : 'offline';
-            document.getElementById('contact-avatar-initials').textContent = user.username.charAt(0).toUpperCase();
-            document.getElementById('contact-avatar-initials').style.background = getAvatarColor(user.username);
+            document.getElementById('contact-avatar').textContent = user.username.charAt(0).toUpperCase();
             
             // Загружаем сообщения
             await loadMessages(user.id);
             
-            // Показываем поле ввода
-            document.getElementById('message-input').focus();
-            
             // Активируем чат в списке
             document.querySelectorAll('.chat-item').forEach(item => {
                 item.classList.remove('active');
-                if (item.dataset.userId == user.id) {
+                if (parseInt(item.dataset.userId) === user.id) {
                     item.classList.add('active');
                 }
             });
             
-            // Адаптивность для мобильных
-            if (window.innerWidth <= 768) {
-                document.querySelector('.sidebar').style.display = 'none';
-            }
+            // Фокус на поле ввода
+            document.getElementById('message-input').focus();
         }
 
         // Загрузка сообщений
-        async function loadMessages(otherUserId) {
-            const messagesContainer = document.getElementById('messages-container');
-            messagesContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Загрузка...</div>';
-            
+        async function loadMessages(otherId) {
             try {
-                const response = await fetch(`/api/messages/${currentUser.id}/${otherUserId}`);
+                const response = await fetch(`/api/messages?user_id=${currentUser.id}&other_id=${otherId}`);
                 const data = await response.json();
                 
-                messagesContainer.innerHTML = '';
+                const messagesContainer = document.getElementById('messages-container');
                 
-                if (data.messages.length > 0) {
-                    let lastDate = '';
-                    data.messages.forEach(message => {
-                        // Добавляем дату если изменилась
-                        const messageDate = message.date;
-                        if (messageDate !== lastDate) {
-                            const dateElement = document.createElement('div');
-                            dateElement.className = 'message-date';
-                            dateElement.textContent = messageDate;
-                            messagesContainer.appendChild(dateElement);
-                            lastDate = messageDate;
-                        }
-                        
-                        addMessageToChat(message);
-                    });
-                } else {
-                    messagesContainer.innerHTML = `
-                        <div style="text-align: center; padding: 60px 20px; color: var(--text-muted);">
-                            <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 20px;"></i>
-                            <h3>Начните диалог</h3>
-                            <p>Отправьте первое сообщение!</p>
-                        </div>
-                    `;
+                if (data.success) {
+                    messagesContainer.innerHTML = '';
+                    
+                    if (data.messages.length > 0) {
+                        data.messages.forEach(message => {
+                            addMessageToChat(message);
+                        });
+                    } else {
+                        messagesContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                <i class="fas fa-comment-slash" style="font-size: 48px; margin-bottom: 20px;"></i>
+                                <p>Нет сообщений. Начните диалог первым!</p>
+                            </div>
+                        `;
+                    }
+                    
+                    scrollToBottom();
                 }
-                
-                scrollToBottom();
             } catch (error) {
                 console.error('Ошибка загрузки сообщений:', error);
-                messagesContainer.innerHTML = '<div class="error">Ошибка загрузки</div>';
             }
         }
 
@@ -1316,41 +1049,34 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
             
-            let content = message.message;
-            let imageHtml = '';
-            
-            if (message.image) {
-                imageHtml = `<img src="${message.image}" class="message-image" onclick="openImage('${message.image}')">`;
+            let content = message.content;
+            if (message.image_url) {
+                content += `<br><img src="${message.image_url}" class="message-image" onclick="window.open('${message.image_url}', '_blank')">`;
             }
             
             messageDiv.innerHTML = `
-                <div class="message-content">${content}</div>
-                ${imageHtml}
-                <div class="message-time">${message.time}</div>
+                <div>${content}</div>
+                <div class="message-time">${message.time || ''}</div>
             `;
             
             messagesContainer.appendChild(messageDiv);
         }
 
         // Отправить сообщение
-        async function sendMessage() {
+        function sendMessage() {
             const input = document.getElementById('message-input');
             const message = input.value.trim();
             
             if (!message || !currentChat) return;
             
-            // Отправляем через WebSocket
             socket.emit('send_message', {
                 sender_id: currentUser.id,
                 receiver_id: currentChat.id,
-                message: message
+                content: message
             });
             
-            // Очищаем поле ввода
             input.value = '';
             input.style.height = 'auto';
-            
-            // Сбрасываем индикатор набора
             resetTyping();
         }
 
@@ -1363,31 +1089,16 @@
         // Показать индикатор набора
         function showTypingIndicator(show) {
             const indicator = document.getElementById('typing-indicator');
-            indicator.style.display = show ? 'flex' : 'none';
+            indicator.style.display = show ? 'block' : 'none';
         }
 
-        // Индикатор набора текста
-        document.getElementById('message-input').addEventListener('input', function() {
-            if (!isTyping && currentChat) {
-                isTyping = true;
-                socket.emit('typing', {
-                    sender_id: currentUser.id,
-                    receiver_id: currentChat.id,
-                    is_typing: true
-                });
+        // Сброс индикатора набора
+        function resetTyping() {
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
             }
             
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(resetTyping, 1000);
-            
-            // Авто-ресайз
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-
-        function resetTyping() {
-            if (isTyping && currentChat) {
-                isTyping = false;
+            if (currentChat) {
                 socket.emit('typing', {
                     sender_id: currentUser.id,
                     receiver_id: currentChat.id,
@@ -1396,7 +1107,24 @@
             }
         }
 
-        // Отправка при нажатии Enter
+        // Обработка ввода сообщения
+        document.getElementById('message-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            
+            if (currentChat) {
+                socket.emit('typing', {
+                    sender_id: currentUser.id,
+                    receiver_id: currentChat.id,
+                    is_typing: true
+                });
+                
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(resetTyping, 1000);
+            }
+        });
+
+        // Отправка по Enter
         document.getElementById('message-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -1404,150 +1132,61 @@
             }
         });
 
-        // Прикрепить файл
-        function attachFile() {
-            document.getElementById('file-input').click();
-        }
-
-        document.getElementById('file-input').addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            if (!file.type.startsWith('image/')) {
-                showNotification('Только изображения', 'error');
-                return;
-            }
-            
-            if (file.size > 10 * 1024 * 1024) {
-                showNotification('Файл слишком большой (макс 10MB)', 'error');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('image', file);
-            
-            try {
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Отправляем сообщение с изображением
-                    socket.emit('send_message', {
-                        sender_id: currentUser.id,
-                        receiver_id: currentChat.id,
-                        message: '',
-                        image: data.url
-                    });
-                    
-                    showNotification('Изображение отправлено', 'success');
-                } else {
-                    showNotification(data.error, 'error');
-                }
-            } catch (error) {
-                showNotification('Ошибка загрузки', 'error');
-            }
-            
-            this.value = '';
-        });
-
         // Обновление статуса пользователя
         function updateUserStatus(userId, online) {
             const chatItem = document.querySelector(`.chat-item[data-user-id="${userId}"]`);
             if (chatItem) {
-                const statusElement = chatItem.querySelector('.chat-preview');
-                const onlineDot = chatItem.querySelector('.chat-time span');
+                const preview = chatItem.querySelector('.chat-preview');
+                preview.innerHTML = online ? 
+                    '<span class="online-dot"></span> online' : 'offline';
                 
-                if (online) {
-                    statusElement.textContent = 'online';
-                    if (!onlineDot) {
-                        chatItem.querySelector('.chat-time').innerHTML = '<span style="color: #00ff9d;">●</span>';
-                    }
-                } else {
-                    statusElement.textContent = 'offline';
-                    chatItem.querySelector('.chat-time').innerHTML = '';
-                }
-                
-                // Обновляем статус в открытом чате
-                if (currentChat && currentChat.id == userId) {
+                if (currentChat && currentChat.id === userId) {
                     document.getElementById('contact-status').innerHTML = online ? 
                         '<span class="online-dot"></span> online' : 'offline';
                 }
             }
         }
 
-        // Открыть изображение
-        function openImage(url) {
-            window.open(url, '_blank');
-        }
-
         // Поиск пользователей
-        document.getElementById('search-input').addEventListener('input', async function(e) {
-            const query = e.target.value.trim();
+        document.getElementById('search-input').addEventListener('input', async function() {
+            const query = this.value.trim();
             
-            if (query.length < 1) {
-                loadUsers();
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&current_id=${currentUser.id}`);
-                const data = await response.json();
-                
-                const chatsList = document.getElementById('chats-list');
-                chatsList.innerHTML = '';
-                
-                if (data.users.length > 0) {
-                    data.users.forEach(user => {
-                        const chatItem = document.createElement('div');
-                        chatItem.className = 'chat-item';
-                        chatItem.dataset.userId = user.id;
-                        
-                        chatItem.innerHTML = `
-                            <div class="chat-avatar" style="background: ${getAvatarColor(user.username)};">
-                                ${user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <div class="chat-content">
-                                <div class="chat-header">
-                                    <div class="chat-name">${user.username}</div>
-                                    <div class="chat-time">${user.online ? '<span style="color: #00ff9d;">●</span>' : ''}</div>
-                                </div>
-                                <div class="chat-preview">
-                                    ${user.online ? 'online' : 'offline'}
-                                </div>
-                            </div>
-                        `;
-                        
-                        chatItem.addEventListener('click', () => openChat(user));
-                        chatsList.appendChild(chatItem);
-                    });
-                } else {
-                    chatsList.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Пользователи не найдены</div>';
+            if (query.length > 0) {
+                try {
+                    const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&current_id=${currentUser.id}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        usersList = data.users;
+                        updateUsersList();
+                    }
+                } catch (error) {
+                    console.error('Ошибка поиска:', error);
                 }
-            } catch (error) {
-                console.error('Ошибка поиска:', error);
-            }
-        });
-
-        // Адаптивность
-        window.addEventListener('resize', () => {
-            if (window.innerWidth <= 768 && currentChat) {
-                document.querySelector('.sidebar').style.display = 'none';
             } else {
-                document.querySelector('.sidebar').style.display = 'flex';
+                loadUsers();
             }
         });
 
-        // Обработка выхода на мобильных
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768 && e.target.closest('.chat-header-bar') && currentChat) {
-                document.querySelector('.sidebar').style.display = 'flex';
-                document.querySelector('.chat-area').style.display = 'none';
+        // Выход
+        async function logout() {
+            if (currentUser) {
+                await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id })
+                });
+                
+                if (socket) {
+                    socket.emit('user_offline', { user_id: currentUser.id });
+                    socket.disconnect();
+                }
             }
-        });
+            
+            currentUser = null;
+            currentChat = null;
+            showScreen('welcome-screen');
+        }
     </script>
 </body>
 </html>
