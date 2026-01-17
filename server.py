@@ -546,4 +546,5 @@ if __name__ == '__main__':
     print("👤 Тестовые пользователи: admin/admin123, alex/alex123, mika/mika123")
     
     # Запуск на стандартном потоковом режиме
-    socketio.run(app, host='0.0.0.0', port=8080, debug=False)
+    socketio.run(app, host='0.0.0.0', port=10000, allow_unsafe_werkzeug=True)
+
