@@ -3,15 +3,16 @@ import uuid
 import json
 import sqlite3
 import re
-import base64
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__, template_folder='.', static_folder='.')
-app.config['SECRET_KEY'] = 'deeplink-secret-key-2024'
+app.config['SECRET_KEY'] = 'deeplink-mega-secret-2024'
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
@@ -28,96 +29,135 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
     
-    # Пользователи с аватаркой в base64
+    # Пользователи
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE,
         password TEXT NOT NULL,
         avatar TEXT DEFAULT '',
+        bio TEXT DEFAULT '',
+        theme TEXT DEFAULT 'dark',
         online BOOLEAN DEFAULT 0,
         last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
+    # Чаты (личные и групповые)
+    c.execute('''CREATE TABLE IF NOT EXISTS chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        is_group BOOLEAN DEFAULT 0,
+        avatar TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    # Участники чатов
+    c.execute('''CREATE TABLE IF NOT EXISTS chat_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(chat_id, user_id),
+        FOREIGN KEY (chat_id) REFERENCES chats(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )''')
+    
     # Сообщения
     c.execute('''CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        room TEXT NOT NULL,
+        chat_id INTEGER NOT NULL,
         sender_id INTEGER NOT NULL,
         sender_name TEXT NOT NULL,
         content TEXT NOT NULL,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        read_by TEXT DEFAULT '[]',
+        FOREIGN KEY (chat_id) REFERENCES chats(id),
         FOREIGN KEY (sender_id) REFERENCES users(id)
     )''')
     
-    # Проверяем наличие пользователей
+    # Тестовые пользователи
     c.execute("SELECT COUNT(*) FROM users")
     if c.fetchone()[0] == 0:
-        # Создаем тестовых пользователей
         from werkzeug.security import generate_password_hash
-        users = [
-            ('admin', 'admin123', ''),
-            ('alex', 'alex123', ''),
-            ('mika', 'mika123', ''),
-            ('kira', 'kira123', ''),
-            ('max', 'max123', '')
+        
+        test_users = [
+            ('admin', 'admin@deeplink.com', generate_password_hash('admin123'), '👑 Администратор'),
+            ('alex', 'alex@deeplink.com', generate_password_hash('alex123'), 'Привет! Я Алекс'),
+            ('mika', 'mika@deeplink.com', generate_password_hash('mika123'), 'Люблю путешествовать'),
+            ('kira', 'kira@deeplink.com', generate_password_hash('kira123'), 'Дизайнер из Москвы'),
+            ('max', 'max@deeplink.com', generate_password_hash('max123'), 'Разработчик Deeplink'),
+            ('anna', 'anna@deeplink.com', generate_password_hash('anna123'), 'Фотограф'),
+            ('dima', 'dima@deeplink.com', generate_password_hash('dima123'), 'Студент МГУ'),
+            ('olga', 'olga@deeplink.com', generate_password_hash('olga123'), 'Маркетолог'),
+            ('serg', 'serg@deeplink.com', generate_password_hash('serg123'), 'Предприниматель'),
+            ('lena', 'lena@deeplink.com', generate_password_hash('lena123'), 'Блогер')
         ]
         
-        for username, password, avatar in users:
+        for username, email, password, bio in test_users:
             try:
                 c.execute(
-                    "INSERT INTO users (username, password, avatar, online) VALUES (?, ?, ?, 1)",
-                    (username, generate_password_hash(password), avatar)
+                    """INSERT INTO users (username, email, password, bio, online) 
+                    VALUES (?, ?, ?, ?, 1)""",
+                    (username, email, password, bio)
                 )
             except:
                 pass
         
         conn.commit()
-        print("✅ Тестовые пользователи созданы")
+        print(f"✅ Создано {len(test_users)} тестовых пользователей")
     
     conn.close()
 
-# ========== API МАРШРУТЫ ==========
+init_db()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+# ========== ПОЛЬЗОВАТЕЛИ ==========
 
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
-        from werkzeug.security import generate_password_hash
-        
         data = request.get_json()
         username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
         password = data.get('password', '')
         
-        if not username or not password:
+        if not username or not email or not password:
             return jsonify({'success': False, 'error': 'Заполните все поля'})
         
-        if len(username) < 4 or len(username) > 10:
-            return jsonify({'success': False, 'error': 'Имя должно быть 4-10 символов'})
+        if len(username) < 4 or len(username) > 20:
+            return jsonify({'success': False, 'error': 'Имя: 4-20 символов'})
         
         if not re.match(r'^[a-zA-Z0-9_]+$', username):
             return jsonify({'success': False, 'error': 'Только латинские буквы, цифры и _'})
         
+        if len(password) < 6:
+            return jsonify({'success': False, 'error': 'Пароль: минимум 6 символов'})
+        
         conn = get_db()
         c = conn.cursor()
         
+        # Проверка имени
         c.execute("SELECT id FROM users WHERE username = ?", (username,))
         if c.fetchone():
             conn.close()
             return jsonify({'success': False, 'error': 'Имя уже занято'})
         
+        # Проверка email
+        c.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if c.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': 'Email уже используется'})
+        
         hashed_pw = generate_password_hash(password)
         c.execute(
-            "INSERT INTO users (username, password, online) VALUES (?, ?, 1)",
-            (username, hashed_pw)
+            """INSERT INTO users (username, email, password, online, bio) 
+            VALUES (?, ?, ?, 1, ?)""",
+            (username, email, hashed_pw, f'Новый пользователь Deeplink')
         )
         user_id = c.lastrowid
         
         c.execute(
-            "SELECT id, username, avatar, online FROM users WHERE id = ?",
+            "SELECT id, username, email, avatar, bio, theme, online FROM users WHERE id = ?",
             (user_id,)
         )
         user = dict(c.fetchone())
@@ -127,8 +167,8 @@ def register():
         
         return jsonify({
             'success': True,
-            'message': 'Регистрация успешна',
-            'user': user
+            'user': user,
+            'message': 'Регистрация успешна'
         })
         
     except Exception as e:
@@ -137,15 +177,13 @@ def register():
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
-        from werkzeug.security import check_password_hash
-        
         data = request.get_json()
         username = data.get('username', '').strip()
         password = data.get('password', '')
         
         conn = get_db()
         c = conn.cursor()
-        c.execute("SELECT * FROM users WHERE username = ?", (username,))
+        c.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, username))
         user = c.fetchone()
         
         if not user:
@@ -156,15 +194,15 @@ def login():
             conn.close()
             return jsonify({'success': False, 'error': 'Неверные данные'})
         
-        c.execute(
-            "UPDATE users SET online = 1, last_seen = CURRENT_TIMESTAMP WHERE id = ?",
-            (user['id'],)
-        )
+        c.execute("UPDATE users SET online = 1, last_seen = CURRENT_TIMESTAMP WHERE id = ?", (user['id'],))
         
         user_data = {
             'id': user['id'],
             'username': user['username'],
+            'email': user['email'],
             'avatar': user['avatar'],
+            'bio': user['bio'],
+            'theme': user['theme'],
             'online': True
         }
         
@@ -173,77 +211,46 @@ def login():
         
         return jsonify({
             'success': True,
-            'message': 'Вход успешен',
             'user': user_data
         })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/logout', methods=['POST'])
-def logout():
+@app.route('/api/users/search', methods=['GET'])
+def search_users():
     try:
-        data = request.get_json()
-        user_id = data.get('user_id')
-        
-        if user_id:
-            conn = get_db()
-            c = conn.cursor()
-            c.execute("UPDATE users SET online = 0 WHERE id = ?", (user_id,))
-            conn.commit()
-            conn.close()
-        
-        return jsonify({'success': True})
-    except:
-        return jsonify({'success': False})
-
-@app.route('/api/users', methods=['GET'])
-def get_users():
-    try:
+        query = request.args.get('q', '').strip()
         current_id = request.args.get('current_id', type=int)
         
         conn = get_db()
         c = conn.cursor()
-        c.execute('''
-            SELECT id, username, avatar, online, last_seen 
-            FROM users 
-            WHERE id != ? 
-            ORDER BY online DESC, username ASC
-        ''', (current_id or 0,))
+        
+        if query:
+            c.execute('''
+                SELECT id, username, avatar, bio, online 
+                FROM users 
+                WHERE (username LIKE ? OR email LIKE ?) 
+                AND id != ?
+                ORDER BY 
+                    CASE WHEN username LIKE ? THEN 1 ELSE 2 END,
+                    online DESC,
+                    username ASC
+                LIMIT 50
+            ''', (f'%{query}%', f'%{query}%', current_id or 0, f'{query}%'))
+        else:
+            c.execute('''
+                SELECT id, username, avatar, bio, online 
+                FROM users 
+                WHERE id != ?
+                ORDER BY online DESC, username ASC
+                LIMIT 50
+            ''', (current_id or 0,))
         
         users = [dict(row) for row in c.fetchall()]
         conn.close()
         
         return jsonify({'success': True, 'users': users})
-    except:
-        return jsonify({'success': False, 'users': []})
-
-@app.route('/api/messages', methods=['GET'])
-def get_messages():
-    try:
-        room = request.args.get('room', 'general')
-        
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('''
-            SELECT m.*, u.avatar as sender_avatar 
-            FROM messages m 
-            JOIN users u ON m.sender_id = u.id 
-            WHERE m.room = ? 
-            ORDER BY m.timestamp ASC
-            LIMIT 100
-        ''', (room,))
-        
-        messages = []
-        for row in c.fetchall():
-            msg = dict(row)
-            if msg['timestamp']:
-                dt = datetime.fromisoformat(msg['timestamp'])
-                msg['time'] = dt.strftime('%H:%M')
-            messages.append(msg)
-        
-        conn.close()
-        return jsonify({'success': True, 'messages': messages})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -253,43 +260,70 @@ def update_profile():
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        new_username = data.get('username', '').strip()
-        avatar_data = data.get('avatar', '')
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        bio = data.get('bio', '').strip()
+        avatar = data.get('avatar', '')
+        theme = data.get('theme', 'dark')
         
         if not user_id:
-            return jsonify({'success': False, 'error': 'Требуется ID пользователя'})
+            return jsonify({'success': False, 'error': 'Требуется ID'})
         
-        if not new_username:
-            return jsonify({'success': False, 'error': 'Имя пользователя не может быть пустым'})
-        
-        if len(new_username) < 4 or len(new_username) > 10:
-            return jsonify({'success': False, 'error': 'Имя должно быть 4-10 символов'})
-        
-        if not re.match(r'^[a-zA-Z0-9_]+$', new_username):
-            return jsonify({'success': False, 'error': 'Только латинские буквы, цифры и _'})
+        if username and (len(username) < 4 or len(username) > 20):
+            return jsonify({'success': False, 'error': 'Имя: 4-20 символов'})
         
         conn = get_db()
         c = conn.cursor()
         
-        # Проверяем, свободно ли новое имя
-        c.execute("SELECT id FROM users WHERE username = ? AND id != ?", (new_username, user_id))
-        if c.fetchone():
-            conn.close()
-            return jsonify({'success': False, 'error': 'Имя уже занято'})
+        # Проверка имени
+        if username:
+            c.execute("SELECT id FROM users WHERE username = ? AND id != ?", (username, user_id))
+            if c.fetchone():
+                conn.close()
+                return jsonify({'success': False, 'error': 'Имя уже занято'})
         
-        # Обновляем имя пользователя
-        c.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
+        # Проверка email
+        if email:
+            c.execute("SELECT id FROM users WHERE email = ? AND id != ?", (email, user_id))
+            if c.fetchone():
+                conn.close()
+                return jsonify({'success': False, 'error': 'Email уже используется'})
         
-        # Обновляем имя в старых сообщениях
-        c.execute("UPDATE messages SET sender_name = ? WHERE sender_id = ?", (new_username, user_id))
+        # Обновляем данные
+        updates = []
+        params = []
         
-        # Сохраняем аватар если есть
-        if avatar_data and avatar_data.startswith('data:image'):
-            c.execute("UPDATE users SET avatar = ? WHERE id = ?", (avatar_data, user_id))
+        if username:
+            updates.append("username = ?")
+            params.append(username)
+            
+            # Обновляем имя в сообщениях
+            c.execute("UPDATE messages SET sender_name = ? WHERE sender_id = ?", (username, user_id))
+        
+        if email:
+            updates.append("email = ?")
+            params.append(email)
+        
+        if bio:
+            updates.append("bio = ?")
+            params.append(bio)
+        
+        if avatar:
+            updates.append("avatar = ?")
+            params.append(avatar)
+        
+        if theme:
+            updates.append("theme = ?")
+            params.append(theme)
+        
+        if updates:
+            params.append(user_id)
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+            c.execute(query, params)
         
         # Получаем обновленные данные
         c.execute(
-            "SELECT id, username, avatar, online FROM users WHERE id = ?",
+            "SELECT id, username, email, avatar, bio, theme, online FROM users WHERE id = ?",
             (user_id,)
         )
         user = dict(c.fetchone())
@@ -297,126 +331,392 @@ def update_profile():
         conn.commit()
         conn.close()
         
-        # Отправляем всем обновление через WebSocket
-        socketio.emit('user_updated', {
+        # Отправляем обновление через WebSocket
+        socketio.emit('profile_updated', {
             'user_id': user_id,
-            'new_username': new_username,
-            'avatar': avatar_data if avatar_data else user['avatar']
+            'username': username or user['username'],
+            'avatar': avatar or user['avatar'],
+            'theme': theme
         }, broadcast=True)
         
         return jsonify({
             'success': True,
-            'message': 'Профиль обновлен',
-            'user': user
+            'user': user,
+            'message': 'Профиль обновлен'
         })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# ========== WEBSOCKET СОБЫТИЯ ==========
+# ========== ЧАТЫ И СООБЩЕНИЯ ==========
+
+@app.route('/api/chats', methods=['GET'])
+def get_chats():
+    try:
+        user_id = request.args.get('user_id', type=int)
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Требуется ID пользователя'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Получаем чаты пользователя
+        c.execute('''
+            SELECT c.*, cm.joined_at 
+            FROM chats c
+            JOIN chat_members cm ON c.id = cm.chat_id
+            WHERE cm.user_id = ?
+            ORDER BY c.created_at DESC
+        ''', (user_id,))
+        
+        chats = []
+        for row in c.fetchall():
+            chat = dict(row)
+            
+            # Получаем участников (для личных чатов - собеседника)
+            c.execute('''
+                SELECT u.id, u.username, u.avatar, u.online 
+                FROM users u
+                JOIN chat_members cm ON u.id = cm.user_id
+                WHERE cm.chat_id = ? AND u.id != ?
+            ''', (chat['id'], user_id))
+            
+            members = [dict(member) for member in c.fetchall()]
+            
+            # Для личного чата используем имя собеседника
+            if not chat['is_group'] and members:
+                chat['display_name'] = members[0]['username']
+                chat['display_avatar'] = members[0]['avatar']
+            else:
+                chat['display_name'] = chat['name']
+                chat['display_avatar'] = chat['avatar']
+            
+            # Получаем последнее сообщение
+            c.execute('''
+                SELECT * FROM messages 
+                WHERE chat_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT 1
+            ''', (chat['id'],))
+            
+            last_msg = c.fetchone()
+            chat['last_message'] = dict(last_msg) if last_msg else None
+            
+            # Считаем непрочитанные
+            c.execute('''
+                SELECT COUNT(*) FROM messages 
+                WHERE chat_id = ? 
+                AND NOT json_contains(read_by, ?)
+                AND sender_id != ?
+            ''', (chat['id'], json.dumps(user_id), user_id))
+            
+            chat['unread_count'] = c.fetchone()[0]
+            
+            chats.append(chat)
+        
+        conn.close()
+        return jsonify({'success': True, 'chats': chats})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/chat/create', methods=['POST'])
+def create_chat():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        other_id = data.get('other_id')
+        
+        if not user_id or not other_id:
+            return jsonify({'success': False, 'error': 'Требуются ID пользователей'})
+        
+        if user_id == other_id:
+            return jsonify({'success': False, 'error': 'Нельзя создать чат с самим собой'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Проверяем существующий личный чат
+        c.execute('''
+            SELECT c.id 
+            FROM chats c
+            JOIN chat_members cm1 ON c.id = cm1.chat_id
+            JOIN chat_members cm2 ON c.id = cm2.chat_id
+            WHERE cm1.user_id = ? AND cm2.user_id = ? 
+            AND NOT c.is_group
+        ''', (user_id, other_id))
+        
+        existing_chat = c.fetchone()
+        
+        if existing_chat:
+            # Возвращаем существующий чат
+            chat_id = existing_chat['id']
+        else:
+            # Создаем новый чат
+            c.execute("SELECT username FROM users WHERE id = ?", (other_id,))
+            other_user = c.fetchone()
+            chat_name = f"{other_user['username']}" if other_user else "Личный чат"
+            
+            c.execute(
+                "INSERT INTO chats (name, is_group) VALUES (?, 0)",
+                (chat_name,)
+            )
+            chat_id = c.lastrowid
+            
+            # Добавляем участников
+            c.execute(
+                "INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?), (?, ?)",
+                (chat_id, user_id, chat_id, other_id)
+            )
+        
+        conn.commit()
+        
+        # Получаем данные чата
+        c.execute('''
+            SELECT c.* FROM chats c WHERE c.id = ?
+        ''', (chat_id,))
+        
+        chat = dict(c.fetchone())
+        
+        # Получаем собеседника
+        c.execute('''
+            SELECT u.id, u.username, u.avatar, u.online 
+            FROM users u
+            JOIN chat_members cm ON u.id = cm.user_id
+            WHERE cm.chat_id = ? AND u.id != ?
+        ''', (chat_id, user_id))
+        
+        other_user = c.fetchone()
+        chat['other_user'] = dict(other_user) if other_user else None
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'chat': chat,
+            'message': 'Чат создан'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/messages', methods=['GET'])
+def get_messages():
+    try:
+        chat_id = request.args.get('chat_id', type=int)
+        user_id = request.args.get('user_id', type=int)
+        
+        if not chat_id or not user_id:
+            return jsonify({'success': False, 'error': 'Требуется ID чата и пользователя'})
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Получаем сообщения
+        c.execute('''
+            SELECT m.*, u.avatar as sender_avatar 
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.chat_id = ?
+            ORDER BY m.timestamp ASC
+            LIMIT 100
+        ''', (chat_id,))
+        
+        messages = []
+        for row in c.fetchall():
+            msg = dict(row)
+            if msg['timestamp']:
+                dt = datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+                msg['time'] = dt.strftime('%H:%M')
+                msg['date'] = dt.strftime('%d.%m.%Y')
+            messages.append(msg)
+        
+        # Помечаем как прочитанные
+        c.execute('''
+            UPDATE messages 
+            SET read_by = json_set(
+                COALESCE(read_by, '[]'),
+                '$[#]',
+                ?
+            )
+            WHERE chat_id = ? 
+            AND NOT json_contains(COALESCE(read_by, '[]'), ?)
+            AND sender_id != ?
+        ''', (json.dumps(user_id), chat_id, json.dumps(user_id), user_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'messages': messages})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ========== WEBSOCKET ==========
+
+online_users = {}
 
 @socketio.on('connect')
 def handle_connect():
-    print('🔌 Новое подключение')
+    print(f'🔌 Новое подключение: {request.sid}')
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print('🔌 Отключение')
+    # Удаляем отключившегося пользователя
+    for user_id, data in list(online_users.items()):
+        if data['sid'] == request.sid:
+            del online_users[user_id]
+            
+            # Обновляем статус в БД
+            conn = get_db()
+            c = conn.cursor()
+            c.execute("UPDATE users SET online = 0 WHERE id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+            
+            # Уведомляем всех
+            emit('user_offline', {'user_id': user_id}, broadcast=True)
+            print(f'👤 Пользователь {user_id} офлайн')
+            break
 
-@socketio.on('user_online')
-def handle_user_online(data):
+@socketio.on('join')
+def handle_join(data):
     user_id = data.get('user_id')
     if user_id:
+        online_users[user_id] = {
+            'sid': request.sid,
+            'joined_at': datetime.now().isoformat()
+        }
+        
+        # Обновляем статус в БД
         conn = get_db()
         c = conn.cursor()
         c.execute("UPDATE users SET online = 1, last_seen = CURRENT_TIMESTAMP WHERE id = ?", (user_id,))
         conn.commit()
         conn.close()
         
-        # Отправляем всем обновление статуса
-        socketio.emit('user_status', {
-            'user_id': user_id,
-            'online': True
-        }, broadcast=True)
+        emit('user_online', {'user_id': user_id}, broadcast=True)
+        print(f'👤 Пользователь {user_id} онлайн')
 
-@socketio.on('user_offline')
-def handle_user_offline(data):
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    chat_id = data.get('chat_id')
     user_id = data.get('user_id')
-    if user_id:
+    
+    if chat_id and user_id:
+        join_room(str(chat_id))
+        
+        # Отмечаем сообщения как прочитанные
         conn = get_db()
         c = conn.cursor()
-        c.execute("UPDATE users SET online = 0 WHERE id = ?", (user_id,))
+        c.execute('''
+            UPDATE messages 
+            SET read_by = json_set(
+                COALESCE(read_by, '[]'),
+                '$[#]',
+                ?
+            )
+            WHERE chat_id = ? 
+            AND NOT json_contains(COALESCE(read_by, '[]'), ?)
+            AND sender_id != ?
+        ''', (json.dumps(user_id), chat_id, json.dumps(user_id), user_id))
         conn.commit()
         conn.close()
-        
-        socketio.emit('user_status', {
-            'user_id': user_id,
-            'online': False
-        }, broadcast=True)
-
-@socketio.on('join_room')
-def handle_join_room(data):
-    room = data.get('room', 'general')
-    join_room(room)
 
 @socketio.on('send_message')
 def handle_send_message(data):
     try:
+        chat_id = data.get('chat_id')
         sender_id = data.get('sender_id')
         sender_name = data.get('sender_name')
         content = data.get('content', '').strip()
-        room = data.get('room', 'general')
         
-        if not content or not sender_id:
+        if not content or not chat_id or not sender_id:
             return
         
+        # Сохраняем в БД
         conn = get_db()
         c = conn.cursor()
         
         c.execute('''
-            INSERT INTO messages (room, sender_id, sender_name, content)
+            INSERT INTO messages (chat_id, sender_id, sender_name, content)
             VALUES (?, ?, ?, ?)
-        ''', (room, sender_id, sender_name, content))
+        ''', (chat_id, sender_id, sender_name, content))
         
         message_id = c.lastrowid
         
+        # Получаем сохраненное сообщение
         c.execute('''
             SELECT m.*, u.avatar as sender_avatar 
-            FROM messages m 
-            JOIN users u ON m.sender_id = u.id 
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
             WHERE m.id = ?
         ''', (message_id,))
         
-        message_data = dict(c.fetchone())
+        message = dict(c.fetchone())
         
-        if message_data['timestamp']:
-            dt = datetime.fromisoformat(message_data['timestamp'])
-            message_data['time'] = dt.strftime('%H:%M')
+        if message['timestamp']:
+            dt = datetime.fromisoformat(message['timestamp'].replace('Z', '+00:00'))
+            message['time'] = dt.strftime('%H:%M')
+        
+        # Получаем участников чата
+        c.execute('''
+            SELECT user_id FROM chat_members WHERE chat_id = ?
+        ''', (chat_id,))
+        
+        members = [row['user_id'] for row in c.fetchall()]
         
         conn.commit()
         conn.close()
         
-        # ВАЖНО: Отправляем сообщение всем в комнате
-        socketio.emit('new_message', message_data, room=room, broadcast=True)
+        # Отправляем сообщение всем участникам чата
+        for member_id in members:
+            if member_id != sender_id and member_id in online_users:
+                emit('new_message', message, room=online_users[member_id]['sid'])
+        
+        # Отправляем обратно отправителю
+        emit('new_message', message, room=request.sid)
+        
+        # Отправляем в комнату чата
+        emit('new_message', message, room=str(chat_id), broadcast=True)
+        
+        print(f'📨 Сообщение в чат {chat_id}: {content[:50]}...')
         
     except Exception as e:
-        print(f"Ошибка отправки сообщения: {e}")
+        print(f'Ошибка отправки сообщения: {e}')
 
 @socketio.on('typing')
 def handle_typing(data):
-    room = data.get('room', 'general')
-    sender_id = data.get('sender_id')
-    is_typing = data.get('is_typing', False)
+    chat_id = data.get('chat_id')
+    user_id = data.get('user_id')
+    is_typing = data.get('is_typing')
     
-    # Отправляем всем в комнате кроме отправителя
-    emit('user_typing', {
-        'sender_id': sender_id,
-        'is_typing': is_typing
-    }, room=room, include_self=False)
+    if chat_id and user_id:
+        emit('user_typing', {
+            'chat_id': chat_id,
+            'user_id': user_id,
+            'is_typing': is_typing
+        }, room=str(chat_id), include_self=False)
 
 # ========== ЗАПУСК ==========
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/health')
+def health():
+    return jsonify({'status': 'ok', 'users_online': len(online_users)})
+
 if __name__ == '__main__':
-    init_db()
-    print("🚀 Deeplink запущен на порту 10000")
-    socketio.run(app, host='0.0.0.0', port=10000, debug=False, allow_unsafe_werkzeug=True)
+    print("🚀 Deeplink Mega запущен на порту 10000")
+    print("👥 10 тестовых пользователей созданы")
+    print("🔍 Поиск пользователей работает")
+    print("🎨 Темы: dark/light/gray")
+    
+    socketio.run(app, 
+                 host='0.0.0.0', 
+                 port=10000, 
+                 debug=False, 
+                 allow_unsafe_werkzeug=True)
