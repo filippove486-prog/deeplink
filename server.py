@@ -11,7 +11,7 @@ import sqlite3
 
 eventlet.monkey_patch()
 
-app = Flask(__name__, template_folder='.', static_folder='.')
+app = Flask(__name__)
 app.config['SECRET_KEY'] = 'deeplink-secret-key-2024-chat-app'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -51,8 +51,7 @@ def init_db():
             description TEXT,
             is_group BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            creator_id INTEGER,
-            FOREIGN KEY (creator_id) REFERENCES users(id)
+            creator_id INTEGER
         )
     ''')
     
@@ -64,9 +63,7 @@ def init_db():
             room_id INTEGER NOT NULL,
             joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_admin BOOLEAN DEFAULT 0,
-            UNIQUE(user_id, room_id),
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (room_id) REFERENCES chat_rooms(id)
+            UNIQUE(user_id, room_id)
         )
     ''')
     
@@ -80,9 +77,7 @@ def init_db():
             attachment TEXT,
             attachment_type TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_read BOOLEAN DEFAULT 0,
-            FOREIGN KEY (room_id) REFERENCES chat_rooms(id),
-            FOREIGN KEY (sender_id) REFERENCES users(id)
+            is_read BOOLEAN DEFAULT 0
         )
     ''')
     
@@ -122,6 +117,41 @@ def init_db():
             INSERT INTO messages (room_id, sender_id, content)
             VALUES (?, ?, ?)
         ''', (room_id, user_id, '👋 Добро пожаловать в DeepLink Messenger! Начните общение прямо сейчас!'))
+        
+        # Создаем тестовых пользователей для демонстрации
+        test_users = [
+            ('user1', 'user1@deeplink.com', 'user1123'),
+            ('user2', 'user2@deeplink.com', 'user2123'),
+            ('user3', 'user3@deeplink.com', 'user3123')
+        ]
+        
+        for username, email, password in test_users:
+            hashed_pwd = generate_password_hash(password, method='pbkdf2:sha256')
+            cursor.execute('''
+                INSERT INTO users (username, email, password, is_online)
+                VALUES (?, ?, ?, 0)
+            ''', (username, email, hashed_pwd))
+            
+            test_user_id = cursor.lastrowid
+            
+            # Добавляем тестовых пользователей в общий чат
+            cursor.execute('''
+                INSERT INTO chat_participants (user_id, room_id)
+                VALUES (?, ?)
+            ''', (test_user_id, room_id))
+            
+            # Добавляем тестовые сообщения
+            test_messages = [
+                (room_id, test_user_id, f'Привет всем! Я {username}!'),
+                (room_id, test_user_id, 'Как дела? 😊'),
+                (room_id, test_user_id, 'Тестирую этот мессенджер!')
+            ]
+            
+            for msg_room_id, msg_sender_id, msg_content in test_messages:
+                cursor.execute('''
+                    INSERT INTO messages (room_id, sender_id, content)
+                    VALUES (?, ?, ?)
+                ''', (msg_room_id, msg_sender_id, msg_content))
     
     conn.commit()
     conn.close()
@@ -140,7 +170,7 @@ def allowed_file(filename):
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Основные маршруты
+# Основной маршрут
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -148,131 +178,179 @@ def index():
 # API маршруты
 @app.route('/api/register', methods=['POST'])
 def register():
-    data = request.json
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    
-    if not username or not email or not password:
-        return jsonify({'error': 'Все поля обязательны'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Проверяем существование пользователя
-    cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
-    if cursor.fetchone():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'Нет данных'}), 400
+            
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not username or not email or not password:
+            return jsonify({'error': 'Все поля обязательны'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Проверяем существование пользователя
+        cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Имя пользователя уже существует'}), 400
+        
+        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Email уже зарегистрирован'}), 400
+        
+        # Создаем пользователя
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        cursor.execute('''
+            INSERT INTO users (username, email, password, is_online)
+            VALUES (?, ?, ?, 1)
+        ''', (username, email, hashed_password))
+        
+        user_id = cursor.lastrowid
+        
+        # Получаем данные пользователя
+        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        user = dict(cursor.fetchone())
+        
+        # Добавляем пользователя в общий чат
+        cursor.execute('SELECT id FROM chat_rooms WHERE name = ?', ('Общий чат',))
+        general_chat = cursor.fetchone()
+        
+        if general_chat:
+            try:
+                cursor.execute('''
+                    INSERT INTO chat_participants (user_id, room_id)
+                    VALUES (?, ?)
+                ''', (user_id, general_chat['id']))
+                
+                # Добавляем приветственное сообщение от пользователя
+                cursor.execute('''
+                    INSERT INTO messages (room_id, sender_id, content)
+                    VALUES (?, ?, ?)
+                ''', (general_chat['id'], user_id, 'Привет всем! Я только что зарегистрировался! 👋'))
+            except sqlite3.IntegrityError:
+                pass  # Уже участник
+        
+        conn.commit()
         conn.close()
-        return jsonify({'error': 'Имя пользователя уже существует'}), 400
-    
-    cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
-    if cursor.fetchone():
-        conn.close()
-        return jsonify({'error': 'Email уже зарегистрирован'}), 400
-    
-    # Создаем пользователя
-    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-    cursor.execute('''
-        INSERT INTO users (username, email, password, is_online)
-        VALUES (?, ?, ?, 1)
-    ''', (username, email, hashed_password))
-    
-    user_id = cursor.lastrowid
-    conn.commit()
-    
-    # Получаем данные пользователя
-    cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
-    user = dict(cursor.fetchone())
-    
-    conn.close()
-    
-    # Добавляем пользователя в общий чат
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM chat_rooms WHERE name = ?', ('Общий чат',))
-    general_chat = cursor.fetchone()
-    
-    if general_chat:
-        try:
-            cursor.execute('''
-                INSERT INTO chat_participants (user_id, room_id)
-                VALUES (?, ?)
-            ''', (user_id, general_chat['id']))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            pass
-    
-    conn.close()
-    
-    return jsonify({
-        'message': 'Регистрация успешна',
-        'user': {
-            'id': user['id'],
-            'username': user['username'],
-            'avatar': user['avatar'],
-            'is_online': bool(user['is_online'])
-        }
-    }), 201
+        
+        return jsonify({
+            'message': 'Регистрация успешна',
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'avatar': user['avatar'],
+                'is_online': bool(user['is_online'])
+            }
+        }), 201
+        
+    except Exception as e:
+        return jsonify({'error': f'Ошибка сервера: {str(e)}'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
-    user_data = cursor.fetchone()
-    
-    if not user_data:
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'Нет данных'}), 400
+            
+        username = data.get('username')
+        password = data.get('password')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+        user_data = cursor.fetchone()
+        
+        if not user_data:
+            conn.close()
+            return jsonify({'error': 'Неверные учетные данные'}), 401
+        
+        user = dict(user_data)
+        
+        if not check_password_hash(user['password'], password):
+            conn.close()
+            return jsonify({'error': 'Неверные учетные данные'}), 401
+        
+        # Обновляем статус пользователя
+        cursor.execute('''
+            UPDATE users 
+            SET is_online = 1, last_seen = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        ''', (user['id'],))
+        
+        conn.commit()
         conn.close()
-        return jsonify({'error': 'Неверные учетные данные'}), 401
-    
-    user = dict(user_data)
-    
-    if not check_password_hash(user['password'], password):
+        
+        return jsonify({
+            'message': 'Вход успешен',
+            'user': {
+                'id': user['id'],
+                'username': user['username'],
+                'avatar': user['avatar'],
+                'is_online': True
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Ошибка сервера: {str(e)}'}), 500
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'Нет данных'}), 400
+            
+        user_id = data.get('user_id')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE users 
+            SET is_online = 0, last_seen = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        ''', (user_id,))
+        
+        conn.commit()
         conn.close()
-        return jsonify({'error': 'Неверные учетные данные'}), 401
-    
-    # Обновляем статус пользователя
-    cursor.execute('''
-        UPDATE users 
-        SET is_online = 1, last_seen = CURRENT_TIMESTAMP 
-        WHERE id = ?
-    ''', (user['id'],))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({
-        'message': 'Вход успешен',
-        'user': {
-            'id': user['id'],
-            'username': user['username'],
-            'avatar': user['avatar'],
-            'is_online': True
-        }
-    }), 200
+        
+        return jsonify({'message': 'Выход успешен'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Ошибка сервера: {str(e)}'}), 500
 
 @app.route('/api/users/search', methods=['GET'])
 def search_users():
     query = request.args.get('q', '')
-    current_user_id = request.args.get('current_user_id')
-    
-    if not query:
-        return jsonify({'users': []})
+    current_user_id = request.args.get('current_user_id', 0)
     
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute('''
-        SELECT id, username, avatar, is_online, last_seen 
-        FROM users 
-        WHERE (username LIKE ? OR email LIKE ?) 
-        AND id != ?
-        LIMIT 20
-    ''', (f'%{query}%', f'%{query}%', current_user_id or 0))
+    if query:
+        cursor.execute('''
+            SELECT id, username, avatar, is_online, last_seen 
+            FROM users 
+            WHERE (username LIKE ? OR email LIKE ?) 
+            AND id != ?
+            LIMIT 20
+        ''', (f'%{query}%', f'%{query}%', current_user_id))
+    else:
+        # Возвращаем всех пользователей кроме текущего
+        cursor.execute('''
+            SELECT id, username, avatar, is_online, last_seen 
+            FROM users 
+            WHERE id != ?
+            LIMIT 20
+        ''', (current_user_id,))
     
     users = []
     for row in cursor.fetchall():
@@ -315,7 +393,8 @@ def get_chats():
             LIMIT 1
         ''', (room_dict['id'],))
         
-        last_message = cursor.fetchone()
+        last_message_data = cursor.fetchone()
+        last_message = dict(last_message_data) if last_message_data else None
         
         # Получаем участников (кроме текущего пользователя)
         cursor.execute('''
@@ -343,7 +422,7 @@ def get_chats():
             'description': room_dict['description'],
             'is_group': bool(room_dict['is_group']),
             'created_at': room_dict['created_at'],
-            'last_message': dict(last_message) if last_message else None,
+            'last_message': last_message,
             'other_participants': other_participants,
             'unread_count': unread_count
         }
@@ -355,67 +434,86 @@ def get_chats():
 
 @app.route('/api/chats/create', methods=['POST'])
 def create_chat():
-    data = request.json
-    name = data.get('name')
-    user_ids = data.get('user_ids', [])
-    creator_id = data.get('creator_id')
-    
-    if not creator_id:
-        return jsonify({'error': 'Creator ID required'}), 400
-    
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Определяем имя чата
-    if not name and user_ids:
-        cursor.execute('''
-            SELECT username FROM users WHERE id IN ({})
-        '''.format(','.join('?' * len(user_ids))), user_ids)
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'Нет данных'}), 400
+            
+        name = data.get('name')
+        user_ids = data.get('user_ids', [])
+        creator_id = data.get('creator_id')
         
-        usernames = [row[0] for row in cursor.fetchall()]
-        chat_name = ', '.join(usernames[:3])
-        if len(usernames) > 3:
-            chat_name += f' и еще {len(usernames) - 3}'
-    else:
-        chat_name = name or 'Новый чат'
-    
-    # Создаем чат
-    is_group = len(user_ids) > 1 or bool(name)
-    cursor.execute('''
-        INSERT INTO chat_rooms (name, is_group, creator_id)
-        VALUES (?, ?, ?)
-    ''', (chat_name, is_group, creator_id))
-    
-    room_id = cursor.lastrowid
-    
-    # Добавляем участников
-    all_user_ids = [creator_id] + user_ids
-    for uid in set(all_user_ids):
-        try:
+        if not creator_id:
+            return jsonify({'error': 'Creator ID required'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Определяем имя чата
+        if not name and user_ids:
             cursor.execute('''
-                INSERT INTO chat_participants (user_id, room_id)
-                VALUES (?, ?)
-            ''', (uid, room_id))
-        except sqlite3.IntegrityError:
-            pass  # Уже участник
-    
-    conn.commit()
-    
-    # Получаем данные созданного чата
-    cursor.execute('SELECT * FROM chat_rooms WHERE id = ?', (room_id,))
-    room = dict(cursor.fetchone())
-    
-    conn.close()
-    
-    return jsonify({
-        'message': 'Чат создан',
-        'room': {
-            'id': room['id'],
-            'name': room['name'],
-            'is_group': bool(room['is_group']),
-            'created_at': room['created_at']
-        }
-    }), 201
+                SELECT username FROM users WHERE id IN ({})
+            '''.format(','.join('?' * len(user_ids))), user_ids)
+            
+            usernames = [row[0] for row in cursor.fetchall()]
+            chat_name = ', '.join(usernames[:3])
+            if len(usernames) > 3:
+                chat_name += f' и еще {len(usernames) - 3}'
+        else:
+            chat_name = name or 'Новый чат'
+        
+        # Создаем чат
+        is_group = len(user_ids) > 1 or bool(name)
+        cursor.execute('''
+            INSERT INTO chat_rooms (name, is_group, creator_id)
+            VALUES (?, ?, ?)
+        ''', (chat_name, is_group, creator_id))
+        
+        room_id = cursor.lastrowid
+        
+        # Добавляем участников
+        all_user_ids = [creator_id] + user_ids
+        for uid in set(all_user_ids):
+            try:
+                cursor.execute('''
+                    INSERT INTO chat_participants (user_id, room_id)
+                    VALUES (?, ?)
+                ''', (uid, room_id))
+            except sqlite3.IntegrityError:
+                pass  # Уже участник
+        
+        # Получаем данные созданного чата
+        cursor.execute('SELECT * FROM chat_rooms WHERE id = ?', (room_id,))
+        room = dict(cursor.fetchone())
+        
+        # Получаем участников для ответа
+        cursor.execute('''
+            SELECT u.id, u.username, u.avatar, u.is_online
+            FROM users u
+            JOIN chat_participants cp ON u.id = cp.user_id
+            WHERE cp.room_id = ? AND u.id != ?
+        ''', (room_id, creator_id))
+        
+        other_participants = [dict(row) for row in cursor.fetchall()]
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Чат создан',
+            'room': {
+                'id': room['id'],
+                'name': room['name'],
+                'is_group': bool(room['is_group']),
+                'created_at': room['created_at'],
+                'other_participants': other_participants,
+                'unread_count': 0,
+                'last_message': None
+            }
+        }), 201
+        
+    except Exception as e:
+        return jsonify({'error': f'Ошибка сервера: {str(e)}'}), 500
 
 @app.route('/api/messages', methods=['GET'])
 def get_messages():
@@ -423,6 +521,9 @@ def get_messages():
     page = int(request.args.get('page', 1))
     limit = 50
     offset = (page - 1) * limit
+    
+    if not room_id:
+        return jsonify({'error': 'Room ID required'}), 400
     
     conn = get_db()
     cursor = conn.cursor()
@@ -446,9 +547,10 @@ def get_messages():
             'avatar': msg['avatar']
         }
         # Форматируем время
-        timestamp = datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
-        msg['time_formatted'] = timestamp.strftime('%H:%M')
-        msg['date_formatted'] = timestamp.strftime('%d.%m.%Y')
+        if msg['timestamp']:
+            timestamp = datetime.fromisoformat(msg['timestamp'].replace('Z', '+00:00'))
+            msg['time_formatted'] = timestamp.strftime('%H:%M')
+            msg['date_formatted'] = timestamp.strftime('%d.%m.%Y')
         messages.append(msg)
     
     # Проверяем есть ли еще сообщения
@@ -497,12 +599,22 @@ def upload_file():
     
     return jsonify({'error': 'Тип файла не поддерживается'}), 400
 
+@app.route('/api/test', methods=['GET'])
+def test_api():
+    """Тестовый эндпоинт для проверки работы API"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'Сервер работает!',
+        'timestamp': datetime.now().isoformat()
+    })
+
 # WebSocket события
 online_users = {}
 
 @socketio.on('connect')
 def handle_connect():
     print('Клиент подключился')
+    emit('connected', {'message': 'Connected to DeepLink server'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -608,8 +720,6 @@ def handle_send_message(data):
     ''', (message_id,))
     
     message_data = dict(cursor.fetchone())
-    conn.commit()
-    conn.close()
     
     # Форматируем данные
     message_data['sender'] = {
@@ -617,8 +727,13 @@ def handle_send_message(data):
         'username': message_data['username'],
         'avatar': message_data['avatar']
     }
-    timestamp = datetime.fromisoformat(message_data['timestamp'].replace('Z', '+00:00'))
-    message_data['time_formatted'] = timestamp.strftime('%H:%M')
+    
+    if message_data['timestamp']:
+        timestamp = datetime.fromisoformat(message_data['timestamp'].replace('Z', '+00:00'))
+        message_data['time_formatted'] = timestamp.strftime('%H:%M')
+    
+    conn.commit()
+    conn.close()
     
     # Отправляем сообщение всем в комнате
     emit('new_message', message_data, room=str(room_id))
@@ -636,7 +751,15 @@ def handle_typing(data):
         }, room=str(room_id), include_self=False)
 
 # Инициализируем базу данных при запуске
-init_db()
+with app.app_context():
+    init_db()
+    print("База данных инициализирована!")
+    print("Тестовые пользователи созданы:")
+    print("- admin / admin123")
+    print("- user1 / user1123")
+    print("- user2 / user2123")
+    print("- user3 / user3123")
 
 if __name__ == '__main__':
+    print("DeepLink Messenger запускается на http://0.0.0.0:8080")
     socketio.run(app, host='0.0.0.0', port=8080, debug=True)
