@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.', static_folder='.')
 app.config['SECRET_KEY'] = 'deeplink-super-secret-key-2024-replit-fixed'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///deeplink.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -575,3 +575,4 @@ if __name__ == '__main__':
     print("🚀 Запуск DeppLink Messenger...")
     print("📡 Сервер будет доступен по адресу: http://0.0.0.0:8080")
     socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True)
+
